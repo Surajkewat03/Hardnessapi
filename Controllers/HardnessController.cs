@@ -8,10 +8,9 @@ namespace Hardnessapi.Controllers;
 
 [ApiController]
 [Route("api/hardness")]
-public class HardnessController : ControllerBase
+public class HardnessController(HardnessDbContext db) : ControllerBase
 {
-    private readonly HardnessDbContext _db;
-    public HardnessController(HardnessDbContext db) { _db = db; }
+    private readonly HardnessDbContext _db = db;
 
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] HardnessApiRequest request, CancellationToken ct)
@@ -29,7 +28,6 @@ public class HardnessController : ControllerBase
         {
             // Find row by Rec_No (mapped from Piece_No)
             int recNo = p.Piece_No;
-            string sampleNo = meta.SampleNo ?? p.Piece_No.ToString();
 
             switch (meta.Stage)
             {
@@ -38,7 +36,7 @@ public class HardnessController : ControllerBase
                         .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
                     if (assRow != null)
                     {
-                        UpdateRow(assRow, p, request, meta);
+                        UpdateRow(assRow, p, request);
                     }
                     else
                     {
@@ -54,7 +52,7 @@ public class HardnessController : ControllerBase
                         .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
                     if (annRow != null)
                     {
-                        UpdateRow(annRow, p, request, meta);
+                        UpdateRow(annRow, p, request);
                     }
                     else
                     {
@@ -70,7 +68,7 @@ public class HardnessController : ControllerBase
                         .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
                     if (polRow != null)
                     {
-                        UpdateRow(polRow, p, request, meta);
+                        UpdateRow(polRow, p, request);
                     }
                     else
                     {
@@ -86,7 +84,7 @@ public class HardnessController : ControllerBase
                         .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
                     if (fgRow != null)
                     {
-                        UpdateRow(fgRow, p, request, meta);
+                        UpdateRow(fgRow, p, request);
                     }
                     else
                     {
@@ -103,7 +101,7 @@ public class HardnessController : ControllerBase
         return Ok(new { processed = count, stage = meta.Stage });
     }
 
-    private void UpdateRow(IHardnessInspection row, PieceData p, HardnessApiRequest request, QrMetadata meta)
+    private static void UpdateRow(IHardnessInspection row, PieceData p, HardnessApiRequest request)
     {
         string mic = request.MIC.ToUpperInvariant();
         
@@ -129,7 +127,7 @@ public class HardnessController : ControllerBase
         row.Inspection_Timestamp = ParseTimestamp(p.Inspection_Timestamp);
     }
 
-    private void PopulateRow(IHardnessInspection row, PieceData p, HardnessApiRequest request, QrMetadata meta)
+    private static void PopulateRow(IHardnessInspection row, PieceData p, HardnessApiRequest request, QrMetadata meta)
     {
         row.QR_Code = request.QR_Code;
         row.Machine_Name = meta.MachineName;
@@ -182,8 +180,7 @@ public class HardnessController : ControllerBase
         var meta = new QrMetadata();
         if (string.IsNullOrWhiteSpace(qr)) return meta;
         
-        var parts = qr.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                      .ToArray();
+        var parts = qr.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         
         if (parts.Length >= 2)
         {
