@@ -189,7 +189,7 @@ public class HardnessController(HardnessDbContext db) : ControllerBase
             meta.MachineName = parts.Length >= 3 ? parts[2] : parts[1];
             
             var machineBase = parts[1].ToUpperInvariant();
-            var lettersOnly = new string(machineBase.TakeWhile(char.IsLetter).ToArray());
+            var lettersOnly = new string([.. machineBase.TakeWhile(char.IsLetter)]);
             var stageToken = string.IsNullOrEmpty(lettersOnly) ? machineBase : lettersOnly;
             if (stageToken is "A" or "ASS" or "P" or "FG")
                 meta.Stage = stageToken;
