@@ -1,0 +1,20 @@
+# .NET Core
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.doccache
+*.suo
+*.userprefs
+*.dbmdl
+*.jfm
+*.pfx
+*.publishsettings
+.vscode/
+.vs/
+.idea/
+.DS_Store
+*.log
+*.swp
+*.bak
+appsettings.Development.json
