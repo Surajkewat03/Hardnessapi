@@ -4,8 +4,8 @@ WORKDIR /source
 
 # Copy csproj and restore
 COPY *.csproj .
-COPY NuGet.Config .
-RUN dotnet restore --configfile NuGet.Config
+COPY nuget.config .
+RUN dotnet restore --configfile nuget.config
 
 # Copy everything else and build
 COPY . .
