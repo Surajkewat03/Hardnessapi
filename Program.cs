@@ -7,7 +7,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<HardnessDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("HardnessDb")));
+{
+    var connectionString = builder.Configuration.GetConnectionString("HardnessDb");
+    options.UseNpgsql(connectionString);
+});
 
 var app = builder.Build();
 
