@@ -20,8 +20,7 @@ app.UseSwaggerUI();
 
 app.MapControllers();
 
-// Render port fix
-var port = Environment.GetEnvironmentVariable("PORT");
+/*var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrEmpty(port))
 {
     app.Run($"http://0.0.0.0:{port}");
@@ -29,4 +28,4 @@ if (!string.IsNullOrEmpty(port))
 else
 {
     app.Run();
-}
+}*/
