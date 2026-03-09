@@ -2,7 +2,6 @@ using Hardnessapi.Data;
 using Hardnessapi.Entities;
 using Hardnessapi.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Hardnessapi.Controllers;
 
@@ -79,25 +78,25 @@ public class HardnessController(HardnessDbContext db) : ControllerBase
         row.Material_Code = meta.MaterialCode;
         row.Sample_No = meta.SampleNo ?? p.Piece_No.ToString();
         row.Inspector_Name = request.Inspector_Name;
+
+        // Scale always goes here
         row.Scale = request.Scale;
+
         row.Inspection_Timestamp = ParseTimestamp(p.Inspection_Timestamp);
 
         string mic = request.MIC.ToUpperInvariant();
 
-        if (mic.Contains("RING") || mic.Contains("RNG"))
+        if (mic.Contains("RNG") || mic.Contains("RING"))
         {
             row.RNGHDHRF = p.Hardness_XY;
-            row.RNGHDHRF_Reason = request.Scale;
         }
         else if (mic.Contains("INR"))
         {
             row.INRHDHRF = p.Hardness_XY;
-            row.INRHDHRF_Result = request.Scale;
         }
         else if (mic.Contains("COR"))
         {
             row.CORHDHRB = p.Hardness_XY;
-            row.CORHDHRB_Result = request.Scale;
         }
     }
 
