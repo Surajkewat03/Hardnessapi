@@ -3,29 +3,30 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Controllers
 builder.Services.AddControllers();
+
+// Database Connection
+builder.Services.AddDbContext<HardnessDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("HardnessDb")));
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<HardnessDbContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("HardnessDb");
-    options.UseNpgsql(connectionString);
-});
-
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+// Swagger
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
 
 app.MapControllers();
 
-/*var port = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(port))
-{
-    app.Run($"http://0.0.0.0:{port}");
-}
-else
-{
-    app.Run();
-}*/
+app.Run();
