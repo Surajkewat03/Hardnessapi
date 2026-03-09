@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddDbContext<HardnessDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("HardnessDb");
@@ -14,15 +15,18 @@ builder.Services.AddDbContext<HardnessDbContext>(options =>
 
 var app = builder.Build();
 
-var port = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(port))
-{
-    app.Urls.Add($"http://*:{port}");
-}
-
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.MapControllers();
 
-app.Run();
+// Render port fix
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    app.Run($"http://0.0.0.0:{port}");
+}
+else
+{
+    app.Run();
+}
