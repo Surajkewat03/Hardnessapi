@@ -15,116 +15,60 @@ public class HardnessController(HardnessDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] HardnessApiRequest request, CancellationToken ct)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.QR_Code) || request.Pieces is null || request.Pieces.Count == 0)
+        if (request == null || string.IsNullOrWhiteSpace(request.QR_Code) || request.Pieces == null)
             return BadRequest("Invalid payload");
 
         var meta = ParseQrMetadata(request.QR_Code);
-        if (meta.Stage is null)
-            return BadRequest("Stage not found in QR_Code (expected A/ASS/P/FG in segments)");
+
+        if (meta.Stage == null)
+            return BadRequest("Stage not found in QR");
 
         int count = 0;
 
         foreach (var p in request.Pieces)
         {
-            // Find row by Rec_No (mapped from Piece_No)
-            int recNo = p.Piece_No;
+            IHardnessInspection row;
 
             switch (meta.Stage)
             {
                 case "ASS":
-                    var assRow = await _db.Coin_QC_Assembly_Hardness_Insp
-                        .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
-                    if (assRow != null)
-                    {
-                        UpdateRow(assRow, p, request);
-                    }
-                    else
-                    {
-                        var newRow = new AssemblyHardnessInspection();
-                        PopulateRow(newRow, p, request, meta);
-                        _db.Coin_QC_Assembly_Hardness_Insp.Add(newRow);
-                    }
-                    count++;
+                    row = new AssemblyHardnessInspection();
+                    _db.Coin_QC_Assembly_Hardness_Insp.Add((AssemblyHardnessInspection)row);
                     break;
 
                 case "A":
-                    var annRow = await _db.Coin_QC_Annealing_Hardness_Insp
-                        .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
-                    if (annRow != null)
-                    {
-                        UpdateRow(annRow, p, request);
-                    }
-                    else
-                    {
-                        var newRow = new AnnealingHardnessInspection();
-                        PopulateRow(newRow, p, request, meta);
-                        _db.Coin_QC_Annealing_Hardness_Insp.Add(newRow);
-                    }
-                    count++;
+                    row = new AnnealingHardnessInspection();
+                    _db.Coin_QC_Annealing_Hardness_Insp.Add((AnnealingHardnessInspection)row);
                     break;
 
                 case "P":
-                    var polRow = await _db.Coin_QC_Polishing_Hardness_Insp
-                        .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
-                    if (polRow != null)
-                    {
-                        UpdateRow(polRow, p, request);
-                    }
-                    else
-                    {
-                        var newRow = new PolishingHardnessInspection();
-                        PopulateRow(newRow, p, request, meta);
-                        _db.Coin_QC_Polishing_Hardness_Insp.Add(newRow);
-                    }
-                    count++;
+                    row = new PolishingHardnessInspection();
+                    _db.Coin_QC_Polishing_Hardness_Insp.Add((PolishingHardnessInspection)row);
                     break;
 
                 case "FG":
-                    var fgRow = await _db.Coin_QC_FG_Hardness_Insp
-                        .FirstOrDefaultAsync(x => x.Rec_No == recNo, ct);
-                    if (fgRow != null)
-                    {
-                        UpdateRow(fgRow, p, request);
-                    }
-                    else
-                    {
-                        var newRow = new FgHardnessInspection();
-                        PopulateRow(newRow, p, request, meta);
-                        _db.Coin_QC_FG_Hardness_Insp.Add(newRow);
-                    }
-                    count++;
+                    row = new FgHardnessInspection();
+                    _db.Coin_QC_FG_Hardness_Insp.Add((FgHardnessInspection)row);
                     break;
+
+                default:
+                    return BadRequest("Invalid stage");
             }
+
+            PopulateRow(row, p, request, meta);
+            count++;
         }
 
-        await _db.SaveChangesAsync(ct);
-        return Ok(new { processed = count, stage = meta.Stage });
-    }
-
-    private static void UpdateRow(IHardnessInspection row, PieceData p, HardnessApiRequest request)
-    {
-        string mic = request.MIC.ToUpperInvariant();
-        
-        // Match column based on MIC keywords
-        if (mic.Contains("RING") || mic.Contains("RNG"))
+        try
         {
-            row.RNGHDHRF = p.Hardness_XY;
-            row.RNGHDHRF_Reason = request.Scale;
+            await _db.SaveChangesAsync(ct);
         }
-        else if (mic.Contains("INR"))
+        catch (Exception ex)
         {
-            row.INRHDHRF = p.Hardness_XY;
-            row.INRHDHRF_Result = request.Scale;
-        }
-        else if (mic.Contains("COR"))
-        {
-            row.CORHDHRB = p.Hardness_XY;
-            row.CORHDHRB_Result = request.Scale;
+            return BadRequest(ex.ToString());
         }
 
-        row.Inspector_Name = request.Inspector_Name;
-        row.Scale = request.Scale;
-        row.Inspection_Timestamp = ParseTimestamp(p.Inspection_Timestamp);
+        return Ok(new { saved = count, stage = meta.Stage });
     }
 
     private static void PopulateRow(IHardnessInspection row, PieceData p, HardnessApiRequest request, QrMetadata meta)
@@ -139,6 +83,7 @@ public class HardnessController(HardnessDbContext db) : ControllerBase
         row.Inspection_Timestamp = ParseTimestamp(p.Inspection_Timestamp);
 
         string mic = request.MIC.ToUpperInvariant();
+
         if (mic.Contains("RING") || mic.Contains("RNG"))
         {
             row.RNGHDHRF = p.Hardness_XY;
@@ -159,10 +104,8 @@ public class HardnessController(HardnessDbContext db) : ControllerBase
     private static DateTime ParseTimestamp(string value)
     {
         if (DateTime.TryParse(value, out var dt))
-        {
-            // PostgreSQL/Npgsql requires UTC for 'timestamp with time zone'
             return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-        }
+
         return DateTime.UtcNow;
     }
 
@@ -178,21 +121,17 @@ public class HardnessController(HardnessDbContext db) : ControllerBase
     private static QrMetadata ParseQrMetadata(string qr)
     {
         var meta = new QrMetadata();
-        if (string.IsNullOrWhiteSpace(qr)) return meta;
-        
-        var parts = qr.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        
+
+        var parts = qr.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
         if (parts.Length >= 2)
         {
-            // Machine Name (e.g., if QR is I/ASS/MRV4/..., parts[2] is MRV4)
-            // If parts[2] exists, it's the machine name. Otherwise use parts[1].
-            meta.MachineName = parts.Length >= 3 ? parts[2] : parts[1];
-            
-            var machineBase = parts[1].ToUpperInvariant();
-            var lettersOnly = new string([.. machineBase.TakeWhile(char.IsLetter)]);
-            var stageToken = string.IsNullOrEmpty(lettersOnly) ? machineBase : lettersOnly;
-            if (stageToken is "A" or "ASS" or "P" or "FG")
-                meta.Stage = stageToken;
+            var stage = parts[1].ToUpper();
+
+            if (stage is "A" or "ASS" or "P" or "FG")
+                meta.Stage = stage;
+
+            meta.MachineName = parts.Length >= 3 ? parts[2] : null;
         }
 
         if (parts.Length >= 4) meta.BatchNo = parts[3];

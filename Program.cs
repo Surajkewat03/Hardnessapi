@@ -14,6 +14,9 @@ builder.Services.AddDbContext<HardnessDbContext>(options =>
 
 var app = builder.Build();
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+app.Urls.Add($"http://*:{port}");
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
